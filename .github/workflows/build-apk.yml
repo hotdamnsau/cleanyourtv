@@ -26,6 +26,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Pasang API key bola (dari GitHub Secret)
+        env:
+          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+        run: |
+          sed -i "s|__FOOTBALL_KEY__|${FOOTBALL_API_KEY}|" launcher/app/src/main/java/com/gathin/tvhome/InfoPanel.java
+
       - name: Build release APK
         working-directory: launcher
         run: |
