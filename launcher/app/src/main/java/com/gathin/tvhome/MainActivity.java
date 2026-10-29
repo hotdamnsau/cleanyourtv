@@ -910,6 +910,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // Not after recreate(): the launch intent survives it and would open the settings again.
         if (savedInstanceState == null && !openLauncherSettingsIfAsked(getIntent())) openInputsIfAsked(getIntent());
+           // --- tambahan Shaff & Syaz ---
+           root.setBackgroundResource(R.drawable.shaff_wallpaper);
+           root.addView(new WeatherOverlayView(this), new FrameLayout.LayoutParams(
+           ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+           root.addView(new InfoPanel(this), InfoPanel.layoutParams(this));
     }
 
     /**
