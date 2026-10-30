@@ -917,6 +917,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         PrayerBar.attach(root, findViewById(R.id.leftBlock));
         MatchPanel.attach(root, findViewById(R.id.topButtons));
+        ShaffMenu.install(this, (LinearLayout) findViewById(R.id.topButtons), (TextView) btnSettings, pillKeys,
+        () -> onLibraryRequested(), () -> toggleReorder(), () -> btnSettings.performLongClick());
     }
 
     /**
