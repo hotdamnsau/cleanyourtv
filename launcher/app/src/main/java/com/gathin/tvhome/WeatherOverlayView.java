@@ -23,9 +23,7 @@ import java.util.Random;
  * Tidak bisa difokus atau diklik.
  */
 public final class WeatherOverlayView extends View {
-    // ===== PENGATURAN: ubah di sini =====
-    private static final double LAT = -6.9175;      // Bandung
-    private static final double LNG = 107.6191;
+    // ===== PENGATURAN: ubah di sini (lokasi diatur lewat Pengaturan Beranda) =====
     /** -1 = pakai cuaca asli. Isi 63 untuk mencoba hujan, 95 untuk badai, 0 untuk cerah. */
     private static final int TEST_CODE = -1;
     private static final long REFRESH_MS = 20 * 60 * 1000L;
@@ -134,8 +132,9 @@ public final class WeatherOverlayView extends View {
             int code = -1;
             HttpURLConnection c = null;
             try {
-                URL u = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + LAT
-                        + "&longitude=" + LNG + "&current=weather_code&timezone=auto");
+                HomePrefs.City city = HomePrefs.city(getContext());
+                URL u = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + city.lat
+                        + "&longitude=" + city.lng + "&current=weather_code&timezone=auto");
                 c = (HttpURLConnection) u.openConnection();
                 c.setConnectTimeout(8000);
                 c.setReadTimeout(8000);
