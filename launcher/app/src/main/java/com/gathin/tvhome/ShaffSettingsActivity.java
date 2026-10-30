@@ -66,8 +66,10 @@ public class ShaffSettingsActivity extends Activity {
         scroll.addView(col, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        col.addView(label("Pengaturan Beranda", 26, true, 0));
+        final String page = getIntent().getStringExtra("page");
+        col.addView(label("leagues".equals(page) ? "Liga sepak bola" : "location".equals(page) ? "Lokasi" : "Pengaturan Beranda", 26, true, 0));
 
+        if (page == null || "location".equals(page)) {
         col.addView(label("Lokasi (jadwal sholat dan cuaca)", 17, true, 24));
         cityLabel = label("", 15, false, 4);
         col.addView(cityLabel);
@@ -105,6 +107,8 @@ public class ShaffSettingsActivity extends Activity {
         results.setOrientation(LinearLayout.VERTICAL);
         col.addView(results);
 
+        }
+        if (page == null || "leagues".equals(page)) {
         col.addView(label("Liga sepak bola yang ditampilkan", 17, true, 28));
         col.addView(label("Ditampilkan maksimal 3 pertandingan terdekat dari liga yang aktif.", 13, false, 4));
         final Set<String> selected = HomePrefs.leagues(this);
@@ -118,8 +122,10 @@ public class ShaffSettingsActivity extends Activity {
             col.addView(b, margin(6));
         }
 
+        }
+
         setContentView(scroll);
-        refreshCityLabel();
+        if (cityLabel != null) refreshCityLabel();
     }
 
     private static String toggleText(boolean on, String name) {
