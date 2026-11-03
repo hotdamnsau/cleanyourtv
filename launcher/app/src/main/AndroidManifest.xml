@@ -251,17 +251,6 @@
                 android:resource="@xml/input_key_service" />
         </service>
     <activity
-    android:name=".ShaffSettingsActivity"
-    android:exported="true"
-    android:label="Pengaturan Beranda"
-    android:theme="@android:style/Theme.Material.NoActionBar">
-    <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-        <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-    </intent-filter>
-    </activity>
-    <activity
     android:name=".ShaffHomeActivity"
     android:exported="true"
     android:label="Beranda Shaff"
