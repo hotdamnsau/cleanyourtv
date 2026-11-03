@@ -55,7 +55,7 @@ public final class PrayerBar extends LinearLayout {
         return bar;
     }
 
-    private PrayerBar(Context context) {
+    PrayerBar(Context context) {
         super(context);
         density = context.getResources().getDisplayMetrics().density;
         setOrientation(HORIZONTAL);

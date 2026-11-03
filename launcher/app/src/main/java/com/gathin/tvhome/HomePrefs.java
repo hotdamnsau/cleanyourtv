@@ -3,9 +3,11 @@ package com.gathin.tvhome;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /** Pilihan kota dan liga, disimpan di perangkat. Diubah lewat ShaffSettingsActivity. */
@@ -79,5 +81,30 @@ final class HomePrefs {
     static String leagueShortName(String code) {
         for (String[] l : LEAGUES) if (l[0].equals(code)) return l[2];
         return code;
+    }
+
+    // ---- aplikasi di Beranda Shaff ----
+    /** Jumlah aplikasi yang tampil sekaligus di layar (4 sampai 8). */
+    static int visibleApps(Context c) {
+        return Math.max(3, Math.min(8, prefs(c).getInt("app_count", 6)));
+    }
+
+    static void setVisibleApps(Context c, int n) {
+        prefs(c).edit().putInt("app_count", n).apply();
+    }
+
+    /** Daftar paket aplikasi yang ditampilkan, berurutan. null = belum diatur (tampilkan semua). */
+    static List<String> apps(Context c) {
+        String s = prefs(c).getString("apps", null);
+        if (s == null) return null;
+        List<String> out = new ArrayList<>();
+        for (String line : s.split("\n")) if (!line.isEmpty()) out.add(line);
+        return out;
+    }
+
+    static void setApps(Context c, List<String> pkgs) {
+        StringBuilder sb = new StringBuilder();
+        for (String p : pkgs) sb.append(p).append('\n');
+        prefs(c).edit().putString("apps", sb.toString()).apply();
     }
 }

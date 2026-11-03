@@ -129,7 +129,7 @@ final class ShaffMenu {
         });
     }
 
-    private static TextView item(Activity act, float d, String text) {
+    static TextView item(Activity act, float d, String text) {
         TextView t = new TextView(act);
         t.setText(text);
         t.setTextSize(16);

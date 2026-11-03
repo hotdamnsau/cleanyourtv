@@ -67,7 +67,7 @@ public class ShaffSettingsActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         final String page = getIntent().getStringExtra("page");
-        col.addView(label("leagues".equals(page) ? "Liga sepak bola" : "location".equals(page) ? "Lokasi" : "Pengaturan Beranda", 26, true, 0));
+        col.addView(label("leagues".equals(page) ? "Liga sepak bola" : "location".equals(page) ? "Lokasi" : "apps".equals(page) ? "Aplikasi" : "Pengaturan Beranda", 26, true, 0));
 
         if (page == null || "location".equals(page)) {
         col.addView(label("Lokasi (jadwal sholat dan cuaca)", 17, true, 24));
@@ -124,8 +124,73 @@ public class ShaffSettingsActivity extends Activity {
 
         }
 
+        if (page == null || "apps".equals(page)) addAppsSection(col);
+
         setContentView(scroll);
         if (cityLabel != null) refreshCityLabel();
+    }
+
+    private void addAppsSection(LinearLayout col) {
+        col.addView(label("Jumlah aplikasi yang tampil per layar", 17, true, 24));
+        col.addView(label("Bila aplikasi lebih banyak dari angka ini, daftar berputar saat digeser.", 13, false, 4));
+        final int[] counts = {4, 5, 6, 7, 8};
+        final Button[] cb = new Button[counts.length];
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        for (int i = 0; i < counts.length; i++) {
+            final int n = counts[i];
+            cb[i] = button("", null);
+            cb[i].setGravity(Gravity.CENTER);
+            cb[i].setOnClickListener(v -> {
+                HomePrefs.setVisibleApps(this, n);
+                refreshCounts(cb, counts);
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.rightMargin = dp(6);
+            lp.topMargin = dp(6);
+            row.addView(cb[i], lp);
+        }
+        col.addView(row);
+        refreshCounts(cb, counts);
+
+        col.addView(label("Pilih aplikasi (angka = urutan di layar)", 17, true, 20));
+        col.addView(label("Tekan OK untuk menambah atau menghapus. Aplikasi yang baru ditambah masuk di urutan paling akhir.", 13, false, 4));
+        final List<AppCatalog.App> all = AppCatalog.load(this);
+        final List<String> order = new ArrayList<>();
+        List<String> saved = HomePrefs.apps(this);
+        if (saved == null) {
+            for (AppCatalog.App a : all) order.add(a.pkg);
+        } else {
+            order.addAll(saved);
+        }
+        final List<Button> btns = new ArrayList<>();
+        for (final AppCatalog.App a : all) {
+            final Button b = button("", null);
+            btns.add(b);
+            b.setOnClickListener(v -> {
+                if (!order.remove(a.pkg)) order.add(a.pkg);
+                HomePrefs.setApps(this, order);
+                refreshAppButtons(all, btns, order);
+            });
+            col.addView(b, margin(6));
+        }
+        refreshAppButtons(all, btns, order);
+    }
+
+    private void refreshCounts(Button[] cb, int[] counts) {
+        int current = HomePrefs.visibleApps(this);
+        for (int i = 0; i < counts.length; i++) {
+            cb[i].setText((counts[i] == current ? "\u25CF " : "\u25CB ") + counts[i]);
+        }
+    }
+
+    private void refreshAppButtons(List<AppCatalog.App> all, List<Button> btns, List<String> order) {
+        for (int i = 0; i < all.size(); i++) {
+            int pos = order.indexOf(all.get(i).pkg);
+            btns.get(i).setText(pos >= 0
+                    ? "\u25CF " + (pos + 1) + "    " + all.get(i).label
+                    : "\u25CB        " + all.get(i).label);
+        }
     }
 
     private static String toggleText(boolean on, String name) {
