@@ -152,6 +152,12 @@ public final class MatchStrip extends FrameLayout {
         if (on) tick.run();
     }
 
+    /** Perbarui tampilan dan ambil jadwal bila liga berubah. */
+    void reload() {
+        refresh();
+        maybeFetch();
+    }
+
     private void refresh() {
         Set<String> sel = HomePrefs.leagues(getContext());
         long now = System.currentTimeMillis();

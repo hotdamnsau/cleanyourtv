@@ -27,6 +27,7 @@ public final class PrayerBar extends LinearLayout {
     private static final int GAP_BELOW_CLOCK_DP = 12;
 
     private final float density;
+    private final boolean vertical;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final LinearLayout[] cells = new LinearLayout[5];
     private final TextView[] names = new TextView[5];
@@ -62,6 +63,7 @@ public final class PrayerBar extends LinearLayout {
     /** vertical = true: daftar menurun (nama di kiri, jam di kanan) dengan panel transparan. */
     PrayerBar(Context context, boolean vertical) {
         super(context);
+        this.vertical = vertical;
         density = context.getResources().getDisplayMetrics().density;
         setOrientation(vertical ? VERTICAL : HORIZONTAL);
         setFocusable(false);
@@ -222,10 +224,16 @@ public final class PrayerBar extends LinearLayout {
                 cells[k].setBackground(on ? highlightBackground() : null);
                 names[k].setTextColor(on ? 0xFFFFFFFF : 0xCCFFFFFF);
                 times[k].setTextColor(on ? 0xFFFFFFFF : 0xCCFFFFFF);
-                counts[k].setVisibility(on ? VISIBLE : GONE);
+                counts[k].setVisibility(on && !vertical ? VISIBLE : GONE);
             }
             highlighted = hi;
         }
+    }
+
+    /** Hitung ulang sekarang (misalnya setelah kota diganti). */
+    void reload() {
+        highlighted = -1;
+        refresh();
     }
 
     private GradientDrawable highlightBackground() {

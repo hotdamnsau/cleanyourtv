@@ -121,6 +121,11 @@ public final class WeatherOverlayView extends View {
         invalidate();
     }
 
+    /** Ambil cuaca lagi sekarang (misalnya setelah kota diganti). */
+    void reload() {
+        fetch();
+    }
+
     private void fetch() {
         if (TEST_CODE >= 0) {
             setCode(TEST_CODE);

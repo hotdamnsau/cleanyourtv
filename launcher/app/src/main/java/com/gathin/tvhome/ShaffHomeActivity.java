@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -82,8 +83,11 @@ public class ShaffHomeActivity extends Activity {
     private LinearLayout tileRow;
     private Tile[] tiles = new Tile[0];
     private ImageView[] buttons = new ImageView[3];
-    private int start = 0;
+    private int start = 0, sel = 0;
     private int slidePx;
+    private WeatherOverlayView weather;
+    private PrayerBar prayer;
+    private MatchStrip strip;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -100,7 +104,8 @@ public class ShaffHomeActivity extends Activity {
         root = new FrameLayout(this);
         root.setClipChildren(false);
         root.setBackground(HomeBackdrop.create(this));
-        root.addView(new WeatherOverlayView(this), new FrameLayout.LayoutParams(
+        weather = new WeatherOverlayView(this);
+        root.addView(weather, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         buildTop();
         buildBottom();
@@ -115,7 +120,7 @@ public class ShaffHomeActivity extends Activity {
         handler.removeCallbacks(tick);
         tick.run();
         root.post(() -> {
-            if (tiles.length > 0) tiles[0].cell.requestFocus();
+            focusSelected();
         });
     }
 
@@ -141,35 +146,38 @@ public class ShaffHomeActivity extends Activity {
         return Math.round(v * d);
     }
 
-    // ---------------- atas: jam+tanggal (kiri), salam (tengah), sholat (kanan) ----------------
+    // ---------------- atas: salam, jam, tanggal (kiri) dan sholat (kanan) ----------------
     private void buildTop() {
-        greeting = new TextView(this);
-        greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, GREETING_SP);
-        greeting.setTypeface(Typeface.DEFAULT_BOLD);
-        greeting.setTextColor(Color.WHITE);
-        greeting.setGravity(Gravity.CENTER);
-        greeting.setShadowLayer(8f, 0f, 3f, 0xAA000000);
-        FrameLayout.LayoutParams gp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        gp.topMargin = dp(22);
-        root.addView(greeting, gp);
-
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.START);
+
+        greeting = new TextView(this);
+        greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, GREETING_SP);
+        greeting.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        greeting.setTextColor(Color.WHITE);
+        greeting.setGravity(Gravity.START);
+        greeting.setShadowLayer(8f, 0f, 3f, 0xAA000000);
+        col.addView(greeting);
+
         clock = new TextView(this);
         clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, CLOCK_SP);
         clock.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
         clock.setTextColor(Color.WHITE);
         clock.setShadowLayer(8f, 0f, 3f, 0xAA000000);
         clock.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        kp.topMargin = dp(8);
+        col.addView(clock, kp);
+
         date = new TextView(this);
         date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         date.setLetterSpacing(0.15f);
         date.setTextColor(0xE6FFFFFF);
         date.setShadowLayer(6f, 0f, 2f, 0xAA000000);
-        col.addView(clock);
         col.addView(date);
+
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         cp.topMargin = dp(18);
@@ -180,7 +188,8 @@ public class ShaffHomeActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
         pp.topMargin = dp(18);
         pp.rightMargin = dp(40);
-        root.addView(new PrayerBar(this, true), pp);
+        prayer = new PrayerBar(this, true);
+        root.addView(prayer, pp);
     }
 
     private void updateTexts() {
@@ -216,7 +225,8 @@ public class ShaffHomeActivity extends Activity {
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         sp.topMargin = dp(14);
-        col.addView(new MatchStrip(this), sp);
+        strip = new MatchStrip(this);
+        col.addView(strip, sp);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
         lp.leftMargin = dp(SIDE_MARGIN_DP);
@@ -259,7 +269,10 @@ public class ShaffHomeActivity extends Activity {
         int tileW = Math.min((int) ((rowW - gap * (k - 1)) / k), dp(MAX_TILE_W_DP));
         int tileH = tileW * 9 / 16;
         slidePx = tileW + gap;
-        if (start >= n) start = 0;
+        if (sel >= n) sel = n - 1;
+        start = Math.max(0, Math.min(start, n - k));
+        if (sel < start) start = sel;
+        if (sel > start + k - 1) start = sel - k + 1;
         tiles = new Tile[k];
         for (int i = 0; i < k; i++) {
             tiles[i] = makeTile(i, tileW, tileH);
@@ -270,15 +283,33 @@ public class ShaffHomeActivity extends Activity {
         bindTiles();
     }
 
-    /** Fokus tetap di aplikasi paling kiri; daftar bergeser melingkar. dir = +1 (kanan) atau -1 (kiri). */
-    private void shift(int dir) {
-        int n = apps.size();
-        if (n < 2) return;
-        start = (start + dir + n) % n;
-        bindTiles();
-        tileRow.animate().cancel();
-        tileRow.setTranslationX(dir * slidePx);
-        tileRow.animate().translationX(0f).setDuration(140).start();
+    /** Geser pilihan satu aplikasi. Berhenti di ujung kiri dan ujung kanan (tidak kembali ke awal). */
+    private void move(int dir) {
+        int n = apps.size(), k = tiles.length;
+        int ns = sel + dir;
+        if (n == 0 || ns < 0 || ns >= n) return;
+        sel = ns;
+        boolean scrolled = false;
+        if (sel < start) {
+            start = sel;
+            scrolled = true;
+        } else if (sel > start + k - 1) {
+            start = sel - k + 1;
+            scrolled = true;
+        }
+        if (scrolled) {
+            bindTiles();
+            tileRow.animate().cancel();
+            tileRow.setTranslationX(dir * slidePx);
+            tileRow.animate().translationX(0f).setDuration(140).start();
+        }
+        tiles[sel - start].cell.requestFocus();
+    }
+
+    private void focusSelected() {
+        if (tiles.length == 0) return;
+        int slot = Math.max(0, Math.min(sel - start, tiles.length - 1));
+        tiles[slot].cell.requestFocus();
     }
 
     private Tile makeTile(final int index, int w, int h) {
@@ -287,7 +318,7 @@ public class ShaffHomeActivity extends Activity {
         t.cell.setOrientation(LinearLayout.VERTICAL);
         t.cell.setGravity(Gravity.CENTER_HORIZONTAL);
         t.cell.setClipChildren(false);
-        t.cell.setFocusable(index == 0); // fokus selalu di aplikasi paling kiri
+        t.cell.setFocusable(true);
         t.cell.setClickable(true);
 
         t.thumb = new FrameLayout(this);
@@ -329,7 +360,7 @@ public class ShaffHomeActivity extends Activity {
             t.cell.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(120).start();
         });
         t.cell.setOnClickListener(v -> {
-            AppCatalog.App a = apps.get((start + index) % apps.size());
+            AppCatalog.App a = apps.get(Math.min(start + index, apps.size() - 1));
             try {
                 startActivity(a.launch);
             } catch (ActivityNotFoundException | SecurityException e) {
@@ -340,10 +371,10 @@ public class ShaffHomeActivity extends Activity {
             boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
             switch (keyCode) {
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    if (down) shift(1);
+                    if (down) move(1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
-                    if (down) shift(-1);
+                    if (down) move(-1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                     if (down) buttons[0].requestFocus();
@@ -417,7 +448,7 @@ public class ShaffHomeActivity extends Activity {
                         if (down && index < 2) buttons[index + 1].requestFocus();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (down && tiles.length > 0) tiles[0].cell.requestFocus();
+                        if (down) focusSelected();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         return true;
@@ -517,12 +548,37 @@ public class ShaffHomeActivity extends Activity {
         showMenu(new String[]{"Lokasi (sholat dan cuaca)", "Liga sepak bola", "Aplikasi dan jumlah tampil",
                         "Setelan sistem", "Beranda klasik"},
                 new Runnable[]{
-                        () -> startActivity(new Intent(this, ShaffSettingsActivity.class).putExtra("page", "location")),
-                        () -> startActivity(new Intent(this, ShaffSettingsActivity.class).putExtra("page", "leagues")),
-                        () -> startActivity(new Intent(this, ShaffSettingsActivity.class).putExtra("page", "apps")),
+                        () -> openSettings("location"),
+                        () -> openSettings("leagues"),
+                        () -> openSettings("apps"),
                         this::openSystemSettings,
-                        () -> startActivity(new Intent(this, MainActivity.class))
+                        () -> {
+                            try {
+                                startActivity(new Intent(this, MainActivity.class));
+                            } catch (RuntimeException e) {
+                                Toast.makeText(this, "Beranda klasik tidak bisa dibuka", Toast.LENGTH_SHORT).show();
+                            }
+                        }
                 });
+    }
+
+    /** Pengaturan dibuka sebagai dialog di dalam layar ini, tanpa berpindah activity. */
+    private void openSettings(String page) {
+        try {
+            final Dialog dlg = new Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen);
+            dlg.setContentView(new SettingsPanel(this, page));
+            dlg.setOnDismissListener(x -> {
+                rebuildTiles();
+                updateTexts();
+                weather.reload();
+                prayer.reload();
+                strip.reload();
+                root.post(this::focusSelected);
+            });
+            dlg.show();
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "Pengaturan gagal dibuka: " + e, Toast.LENGTH_LONG).show();
+        }
     }
 
     /** Daftar pilihan (dropdown) di sebelah kiri tombol bulat. */
