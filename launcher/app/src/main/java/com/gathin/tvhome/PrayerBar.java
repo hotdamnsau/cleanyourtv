@@ -56,29 +56,60 @@ public final class PrayerBar extends LinearLayout {
     }
 
     PrayerBar(Context context) {
+        this(context, false);
+    }
+
+    /** vertical = true: daftar menurun (nama di kiri, jam di kanan) dengan panel transparan. */
+    PrayerBar(Context context, boolean vertical) {
         super(context);
         density = context.getResources().getDisplayMetrics().density;
-        setOrientation(HORIZONTAL);
+        setOrientation(vertical ? VERTICAL : HORIZONTAL);
         setFocusable(false);
         setClickable(false);
         setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        if (vertical) {
+            setPadding(dp(8), dp(8), dp(8), dp(8));
+            GradientDrawable panel = new GradientDrawable();
+            panel.setColor(0x59000000);
+            panel.setCornerRadius(16 * density);
+            panel.setStroke(Math.max(2, dp(1.5f)), 0x99FFFFFF);
+            setBackground(panel);
+        }
         for (int i = 0; i < 5; i++) {
             LinearLayout cell = new LinearLayout(context);
-            cell.setOrientation(VERTICAL);
-            cell.setGravity(Gravity.CENTER_HORIZONTAL);
-            cell.setMinimumWidth(dp(80));
-            cell.setPadding(dp(10), dp(6), dp(10), dp(6));
-            names[i] = text(12f, false);
-            times[i] = text(19f, true);
+            names[i] = text(vertical ? 14f : 12f, false);
+            times[i] = text(vertical ? 17f : 19f, true);
             counts[i] = text(11f, false);
             counts[i].setVisibility(GONE);
-            cell.addView(names[i]);
-            cell.addView(times[i]);
-            cell.addView(counts[i]);
+            if (vertical) {
+                cell.setOrientation(HORIZONTAL);
+                cell.setGravity(Gravity.CENTER_VERTICAL);
+                cell.setPadding(dp(12), dp(5), dp(12), dp(5));
+                names[i].setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                names[i].setMinWidth(dp(84));
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                cp.leftMargin = dp(8);
+                cell.addView(names[i]);
+                cell.addView(times[i]);
+                cell.addView(counts[i], cp);
+            } else {
+                cell.setOrientation(VERTICAL);
+                cell.setGravity(Gravity.CENTER_HORIZONTAL);
+                cell.setMinimumWidth(dp(80));
+                cell.setPadding(dp(10), dp(6), dp(10), dp(6));
+                cell.addView(names[i]);
+                cell.addView(times[i]);
+                cell.addView(counts[i]);
+            }
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            if (i < 4) lp.rightMargin = dp(4);
+                    vertical ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i < 4) {
+                if (vertical) lp.bottomMargin = dp(2);
+                else lp.rightMargin = dp(4);
+            }
             addView(cell, lp);
             cells[i] = cell;
         }

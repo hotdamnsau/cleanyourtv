@@ -69,6 +69,7 @@ public class ShaffSettingsActivity extends Activity {
         final String page = getIntent().getStringExtra("page");
         col.addView(label("leagues".equals(page) ? "Liga sepak bola" : "location".equals(page) ? "Lokasi" : "apps".equals(page) ? "Aplikasi" : "Pengaturan Beranda", 26, true, 0));
 
+        try {
         if (page == null || "location".equals(page)) {
         col.addView(label("Lokasi (jadwal sholat dan cuaca)", 17, true, 24));
         cityLabel = label("", 15, false, 4);
@@ -110,7 +111,7 @@ public class ShaffSettingsActivity extends Activity {
         }
         if (page == null || "leagues".equals(page)) {
         col.addView(label("Liga sepak bola yang ditampilkan", 17, true, 28));
-        col.addView(label("Ditampilkan maksimal 3 pertandingan terdekat dari liga yang aktif.", 13, false, 4));
+        col.addView(label("Pertandingan terdekat dari liga yang aktif ditampilkan di layar Beranda.", 13, false, 4));
         final Set<String> selected = HomePrefs.leagues(this);
         for (final String[] lg : HomePrefs.LEAGUES) {
             final Button b = button(toggleText(selected.contains(lg[0]), lg[1]), null);
@@ -125,6 +126,9 @@ public class ShaffSettingsActivity extends Activity {
         }
 
         if (page == null || "apps".equals(page)) addAppsSection(col);
+        } catch (Throwable t) {
+            col.addView(label("Terjadi error: " + t, 14, false, 12));
+        }
 
         setContentView(scroll);
         if (cityLabel != null) refreshCityLabel();

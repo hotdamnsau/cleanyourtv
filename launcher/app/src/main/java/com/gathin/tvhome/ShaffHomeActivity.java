@@ -50,15 +50,15 @@ import java.util.TimeZone;
 public class ShaffHomeActivity extends Activity {
     // ===== PENGATURAN: ubah di sini =====
     private static final String GREETING_NAMES = "Shaff dan Syaz";
-    /** Ukuran jam. Salam memakai ukuran yang sama. Ubah bila beda dari Beranda lama. */
     private static final float CLOCK_SP = 56f;
-    private static final int PRAYER_GAP_DP = 36;     // jarak jadwal sholat dari tanggal
-    private static final int SIDE_MARGIN_DP = 48;    // margin kiri baris aplikasi
-    private static final int RIGHT_GUTTER_DP = 120;  // ruang kanan untuk tombol bulat
+    /** Ukuran salam = 50% ukuran jam. */
+    private static final float GREETING_SP = 28f;
+    private static final int SIDE_MARGIN_DP = 32;    // margin kiri jam, tanggal, dan baris aplikasi
+    private static final int RIGHT_GUTTER_DP = 92;   // ruang kanan untuk tombol bulat
     private static final int BOTTOM_MARGIN_DP = 28;
     private static final int TILE_GAP_DP = 14;
     private static final int MAX_TILE_W_DP = 260;
-    private static final int BUTTON_DP = 52;
+    private static final int BUTTON_DP = 36;         // 70% dari ukuran sebelumnya (52)
     // =====================================
 
     private static final class Tile {
@@ -82,8 +82,8 @@ public class ShaffHomeActivity extends Activity {
     private LinearLayout tileRow;
     private Tile[] tiles = new Tile[0];
     private ImageView[] buttons = new ImageView[3];
-    private int start = 0, lastFocus = 0;
-    private boolean focusedOnce;
+    private int start = 0;
+    private int slidePx;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -114,12 +114,15 @@ public class ShaffHomeActivity extends Activity {
         rebuildTiles();
         handler.removeCallbacks(tick);
         tick.run();
-        if (!focusedOnce) {
-            root.post(() -> {
-                if (tiles.length > 0) tiles[Math.min(lastFocus, tiles.length - 1)].cell.requestFocus();
-                focusedOnce = true;
-            });
-        }
+        root.post(() -> {
+            if (tiles.length > 0) tiles[0].cell.requestFocus();
+        });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
     }
 
     @Override
@@ -138,22 +141,22 @@ public class ShaffHomeActivity extends Activity {
         return Math.round(v * d);
     }
 
-    // ---------------- atas: salam, jam, tanggal, sholat ----------------
+    // ---------------- atas: jam+tanggal (kiri), salam (tengah), sholat (kanan) ----------------
     private void buildTop() {
         greeting = new TextView(this);
-        greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, CLOCK_SP);
+        greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, GREETING_SP);
         greeting.setTypeface(Typeface.DEFAULT_BOLD);
         greeting.setTextColor(Color.WHITE);
         greeting.setGravity(Gravity.CENTER);
         greeting.setShadowLayer(8f, 0f, 3f, 0xAA000000);
         FrameLayout.LayoutParams gp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        gp.topMargin = dp(18);
+        gp.topMargin = dp(22);
         root.addView(greeting, gp);
 
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setGravity(Gravity.END);
+        col.setGravity(Gravity.START);
         clock = new TextView(this);
         clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, CLOCK_SP);
         clock.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
@@ -167,15 +170,17 @@ public class ShaffHomeActivity extends Activity {
         date.setShadowLayer(6f, 0f, 2f, 0xAA000000);
         col.addView(clock);
         col.addView(date);
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        pp.topMargin = dp(PRAYER_GAP_DP);
-        col.addView(new PrayerBar(this), pp);
         FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         cp.topMargin = dp(18);
-        cp.rightMargin = dp(40);
+        cp.leftMargin = dp(SIDE_MARGIN_DP);
         root.addView(col, cp);
+
+        FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        pp.topMargin = dp(18);
+        pp.rightMargin = dp(40);
+        root.addView(new PrayerBar(this, true), pp);
     }
 
     private void updateTexts() {
@@ -195,10 +200,7 @@ public class ShaffHomeActivity extends Activity {
         SimpleDateFormat df = new SimpleDateFormat("EEEE d MMMM", id);
         df.setTimeZone(tz);
         date.setText(df.format(cal.getTime()).toUpperCase(id));
-
-        String one = g + ", " + GREETING_NAMES;
-        float limit = getResources().getDisplayMetrics().widthPixels * 0.52f;
-        greeting.setText(greeting.getPaint().measureText(one) <= limit ? one : g + ",\n" + GREETING_NAMES);
+        greeting.setText(g + "\n" + GREETING_NAMES); // baris 1: salam, baris 2: nama
     }
 
     // ---------------- bawah: aplikasi + pita pertandingan ----------------
@@ -256,6 +258,7 @@ public class ShaffHomeActivity extends Activity {
         int gap = dp(TILE_GAP_DP);
         int tileW = Math.min((int) ((rowW - gap * (k - 1)) / k), dp(MAX_TILE_W_DP));
         int tileH = tileW * 9 / 16;
+        slidePx = tileW + gap;
         if (start >= n) start = 0;
         tiles = new Tile[k];
         for (int i = 0; i < k; i++) {
@@ -265,8 +268,17 @@ public class ShaffHomeActivity extends Activity {
             tileRow.addView(tiles[i].cell, lp);
         }
         bindTiles();
-        if (lastFocus >= k) lastFocus = 0;
-        if (focusedOnce) tiles[lastFocus].cell.post(() -> tiles[Math.min(lastFocus, tiles.length - 1)].cell.requestFocus());
+    }
+
+    /** Fokus tetap di aplikasi paling kiri; daftar bergeser melingkar. dir = +1 (kanan) atau -1 (kiri). */
+    private void shift(int dir) {
+        int n = apps.size();
+        if (n < 2) return;
+        start = (start + dir + n) % n;
+        bindTiles();
+        tileRow.animate().cancel();
+        tileRow.setTranslationX(dir * slidePx);
+        tileRow.animate().translationX(0f).setDuration(140).start();
     }
 
     private Tile makeTile(final int index, int w, int h) {
@@ -275,7 +287,7 @@ public class ShaffHomeActivity extends Activity {
         t.cell.setOrientation(LinearLayout.VERTICAL);
         t.cell.setGravity(Gravity.CENTER_HORIZONTAL);
         t.cell.setClipChildren(false);
-        t.cell.setFocusable(true);
+        t.cell.setFocusable(index == 0); // fokus selalu di aplikasi paling kiri
         t.cell.setClickable(true);
 
         t.thumb = new FrameLayout(this);
@@ -315,7 +327,6 @@ public class ShaffHomeActivity extends Activity {
             t.name.setVisibility(has ? View.VISIBLE : View.INVISIBLE);
             t.cell.setTranslationZ(has ? dp(12) : 0f);
             t.cell.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(120).start();
-            if (has) lastFocus = index;
         });
         t.cell.setOnClickListener(v -> {
             AppCatalog.App a = apps.get((start + index) % apps.size());
@@ -327,31 +338,12 @@ public class ShaffHomeActivity extends Activity {
         });
         t.cell.setOnKeyListener((v, keyCode, event) -> {
             boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-            int k = tiles.length, n = apps.size();
             switch (keyCode) {
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    if (down) {
-                        if (index < k - 1) {
-                            tiles[index + 1].cell.requestFocus();
-                        } else if (n > k) {
-                            start = (start + 1) % n; // melingkar ke kanan
-                            bindTiles();
-                        } else {
-                            tiles[0].cell.requestFocus();
-                        }
-                    }
+                    if (down) shift(1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
-                    if (down) {
-                        if (index > 0) {
-                            tiles[index - 1].cell.requestFocus();
-                        } else if (n > k) {
-                            start = (start - 1 + n) % n;
-                            bindTiles();
-                        } else {
-                            tiles[k - 1].cell.requestFocus();
-                        }
-                    }
+                    if (down) shift(-1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                     if (down) buttons[0].requestFocus();
@@ -412,7 +404,7 @@ public class ShaffHomeActivity extends Activity {
         buttons[2] = roundButton(R.drawable.shaff_ic_tune, "Atur");
         for (int i = 0; i < 3; i++) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP));
-            if (i > 0) lp.topMargin = dp(12);
+            if (i > 0) lp.topMargin = dp(8);
             col.addView(buttons[i], lp);
             final int index = i;
             buttons[i].setOnKeyListener((v, keyCode, event) -> {
@@ -425,7 +417,7 @@ public class ShaffHomeActivity extends Activity {
                         if (down && index < 2) buttons[index + 1].requestFocus();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (down && tiles.length > 0) tiles[Math.min(lastFocus, tiles.length - 1)].cell.requestFocus();
+                        if (down && tiles.length > 0) tiles[0].cell.requestFocus();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         return true;
@@ -448,7 +440,7 @@ public class ShaffHomeActivity extends Activity {
         ImageView v = new ImageView(this);
         v.setImageResource(iconRes);
         v.setContentDescription(description);
-        int p = dp(13);
+        int p = dp(9);
         v.setPadding(p, p, p, p);
         v.setFocusable(true);
         v.setClickable(true);
