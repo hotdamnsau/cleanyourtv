@@ -237,12 +237,12 @@ public class ShaffHomeActivity extends Activity {
 
     private void rebuildTiles() {
         List<AppCatalog.App> all = AppCatalog.load(this);
-        List<String> sel = HomePrefs.apps(this);
+        List<String> savedApps = HomePrefs.apps(this);
         apps.clear();
-        if (sel == null) {
+        if (savedApps == null) {
             apps.addAll(all);
         } else {
-            for (String pkg : sel) {
+            for (String pkg : savedApps) {
                 for (AppCatalog.App a : all) {
                     if (a.pkg.equals(pkg)) {
                         apps.add(a);

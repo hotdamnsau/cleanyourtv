@@ -58,7 +58,7 @@ final class SettingsPanel extends ScrollView {
     SettingsPanel(Context context, final String page) {
         super(context);
         ctx = context;
-        density = context.ctx.getResources().getDisplayMetrics().density;
+        density = context.getResources().getDisplayMetrics().density;
         setBackgroundColor(0xFF101418);
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
