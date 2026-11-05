@@ -16,6 +16,7 @@ import android.graphics.drawable.StateListDrawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -45,8 +46,8 @@ import java.util.TimeZone;
 
 /**
  * Beranda Shaff: layar Home baru.
- * Kanan atas: jam, tanggal, jadwal sholat. Tengah atas: salam. Tengah bawah: satu baris aplikasi
- * (scroll melingkar) dan pita 4 pertandingan. Kanan bawah: tombol Input, Wi-Fi, Atur (hanya ikon).
+ * Kiri atas: jam, tanggal, salam. Kanan atas: jadwal sholat. Bawah: satu baris aplikasi dan pita 4
+ * pertandingan. Kanan bawah: satu tombol Atur (dropdown: Input, Wi-Fi, lokasi, liga, aplikasi, wallpaper, setelan).
  */
 public class ShaffHomeActivity extends Activity {
     // ===== PENGATURAN: ubah di sini =====
@@ -57,7 +58,6 @@ public class ShaffHomeActivity extends Activity {
     private static final float GREETING_MAX_SP = 24f;
     private static final float GREETING_MIN_SP = 14f;
     private static final int SIDE_MARGIN_DP = 32;    // margin kiri jam, tanggal, dan baris aplikasi
-    private static final int RIGHT_GUTTER_DP = 92;   // ruang kanan untuk tombol bulat
     private static final int BOTTOM_MARGIN_DP = 28;
     private static final int TILE_GAP_DP = 14;
     private static final int MAX_TILE_W_DP = 260;
@@ -85,7 +85,8 @@ public class ShaffHomeActivity extends Activity {
     private int topColWidthPx;
     private LinearLayout tileRow;
     private Tile[] tiles = new Tile[0];
-    private ImageView[] buttons = new ImageView[3];
+    private ImageView aturButton;
+    private static final int REQ_WALLPAPER = 4711;
     private int start = 0, sel = 0;
     private int slidePx;
     private WeatherOverlayView weather;
@@ -112,7 +113,6 @@ public class ShaffHomeActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         buildTop();
         buildBottom();
-        buildButtons();
         setContentView(root);
     }
 
@@ -241,15 +241,41 @@ public class ShaffHomeActivity extends Activity {
         tileRow.setClipChildren(false);
         col.addView(tileRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        sp.topMargin = dp(14);
+
+        // Baris paling bawah: pita pertandingan (melebar) dan tombol Atur di ujung kanan.
+        LinearLayout bottomRow = new LinearLayout(this);
+        bottomRow.setOrientation(LinearLayout.HORIZONTAL);
+        bottomRow.setGravity(Gravity.CENTER_VERTICAL);
         strip = new MatchStrip(this);
-        col.addView(strip, sp);
+        bottomRow.addView(strip, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        aturButton = roundButton(R.drawable.shaff_ic_tune, "Atur");
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP));
+        bp.leftMargin = dp(12);
+        bottomRow.addView(aturButton, bp);
+        aturButton.setOnClickListener(v -> showAturMenu());
+        aturButton.setOnKeyListener((v, keyCode, event) -> {
+            boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    if (down) focusSelected();
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        rp.topMargin = dp(14);
+        col.addView(bottomRow, rp);
+
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
         lp.leftMargin = dp(SIDE_MARGIN_DP);
-        lp.rightMargin = dp(RIGHT_GUTTER_DP);
+        lp.rightMargin = dp(SIDE_MARGIN_DP);
         lp.bottomMargin = dp(BOTTOM_MARGIN_DP);
         root.addView(col, lp);
     }
@@ -283,7 +309,7 @@ public class ShaffHomeActivity extends Activity {
             return;
         }
         int k = Math.min(HomePrefs.visibleApps(this), n);
-        float rowW = getResources().getDisplayMetrics().widthPixels - dp(SIDE_MARGIN_DP + RIGHT_GUTTER_DP);
+        float rowW = getResources().getDisplayMetrics().widthPixels - dp(SIDE_MARGIN_DP * 2);
         int gap = dp(TILE_GAP_DP);
         int tileW = Math.min((int) ((rowW - gap * (k - 1)) / k), dp(MAX_TILE_W_DP));
         int tileH = tileW * 9 / 16;
@@ -396,7 +422,7 @@ public class ShaffHomeActivity extends Activity {
                     if (down) move(-1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    if (down) buttons[0].requestFocus();
+                    if (down) aturButton.requestFocus();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
                     return true;
@@ -445,47 +471,7 @@ public class ShaffHomeActivity extends Activity {
         }
     }
 
-    // ---------------- kanan bawah: tombol bulat ----------------
-    private void buildButtons() {
-        LinearLayout col = new LinearLayout(this);
-        col.setOrientation(LinearLayout.VERTICAL);
-        buttons[0] = roundButton(R.drawable.shaff_ic_input, "Input");
-        buttons[1] = roundButton(R.drawable.shaff_ic_wifi, "Wi-Fi");
-        buttons[2] = roundButton(R.drawable.shaff_ic_tune, "Atur");
-        for (int i = 0; i < 3; i++) {
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP));
-            if (i > 0) lp.topMargin = dp(8);
-            col.addView(buttons[i], lp);
-            final int index = i;
-            buttons[i].setOnKeyListener((v, keyCode, event) -> {
-                boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
-                switch (keyCode) {
-                    case KeyEvent.KEYCODE_DPAD_UP:
-                        if (down && index > 0) buttons[index - 1].requestFocus();
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_DOWN:
-                        if (down && index < 2) buttons[index + 1].requestFocus();
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (down) focusSelected();
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        return true;
-                    default:
-                        return false;
-                }
-            });
-        }
-        buttons[0].setOnClickListener(v -> showInputs());
-        buttons[1].setOnClickListener(v -> openWifi());
-        buttons[2].setOnClickListener(v -> showAturMenu());
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.END);
-        lp.rightMargin = dp(40);
-        lp.bottomMargin = dp(BOTTOM_MARGIN_DP);
-        root.addView(col, lp);
-    }
-
+    // ---------------- tombol bulat ----------------
     private ImageView roundButton(int iconRes, String description) {
         ImageView v = new ImageView(this);
         v.setImageResource(iconRes);
@@ -564,14 +550,77 @@ public class ShaffHomeActivity extends Activity {
     }
 
     private void showAturMenu() {
-        showMenu(new String[]{"Lokasi (sholat dan cuaca)", "Liga sepak bola", "Aplikasi dan jumlah tampil",
-                        "Setelan sistem"},
+        showMenu(new String[]{"Input", "Wi-Fi", "Lokasi (sholat dan cuaca)", "Liga sepak bola",
+                        "Aplikasi dan jumlah tampil", "Wallpaper", "Setelan sistem"},
                 new Runnable[]{
+                        this::showInputs,
+                        this::openWifi,
                         () -> openSettings("location"),
                         () -> openSettings("leagues"),
                         () -> openSettings("apps"),
+                        this::showWallpaperMenu,
                         this::openSystemSettings
                 });
+    }
+
+    // ---------------- wallpaper dari flashdisk atau penyimpanan internal ----------------
+    private void showWallpaperMenu() {
+        showMenu(new String[]{"Pilih gambar (flashdisk atau penyimpanan)", "Kembalikan wallpaper bawaan"},
+                new Runnable[]{
+                        this::pickWallpaper,
+                        () -> {
+                            if (WallpaperStore.hasCustom(this)) {
+                                WallpaperStore.reset(this);
+                                root.setBackground(HomeBackdrop.create(this));
+                                Toast.makeText(this, "Wallpaper bawaan dipulihkan", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(this, "Sudah memakai wallpaper bawaan", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                });
+    }
+
+    /** Membuka pemilih berkas sistem (mendukung flashdisk USB dan penyimpanan internal). */
+    private void pickWallpaper() {
+        Intent[] tries = {
+                new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*"),
+                new Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("image/*")
+        };
+        for (Intent i : tries) {
+            try {
+                startActivityForResult(i, REQ_WALLPAPER);
+                return;
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+                // coba cara berikutnya
+            }
+        }
+        Toast.makeText(this, "TV ini tidak punya pemilih berkas. Pasang aplikasi file manager (misalnya "
+                + "X-plore atau File Commander), lalu coba lagi.", Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_WALLPAPER || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        final Uri uri = data.getData();
+        Toast.makeText(this, "Memproses wallpaper...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            String error = null;
+            try {
+                WallpaperStore.importFrom(this, uri);
+            } catch (Exception | OutOfMemoryError e) {
+                error = e.getMessage() == null ? e.toString() : e.getMessage();
+            }
+            final String err = error;
+            handler.post(() -> {
+                if (err == null) {
+                    root.setBackground(HomeBackdrop.create(this));
+                    Toast.makeText(this, "Wallpaper diganti", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Wallpaper gagal: " + err, Toast.LENGTH_LONG).show();
+                }
+            });
+        }).start();
     }
 
     /** Pengaturan dibuka sebagai dialog di dalam layar ini, tanpa berpindah activity. */
@@ -593,7 +642,7 @@ public class ShaffHomeActivity extends Activity {
         }
     }
 
-    /** Daftar pilihan (dropdown) di sebelah kiri tombol bulat. */
+    /** Daftar pilihan (dropdown) tepat di atas tombol Atur. */
     private void showMenu(String[] names, final Runnable[] actions) {
         final PopupWindow[] holder = new PopupWindow[1];
         LinearLayout list = new LinearLayout(this);
@@ -620,7 +669,7 @@ public class ShaffHomeActivity extends Activity {
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setOutsideTouchable(true);
         holder[0] = popup;
-        popup.showAtLocation(root, Gravity.BOTTOM | Gravity.END, dp(40 + BUTTON_DP + 14), dp(BOTTOM_MARGIN_DP));
+        popup.showAtLocation(root, Gravity.BOTTOM | Gravity.END, dp(SIDE_MARGIN_DP), dp(BOTTOM_MARGIN_DP + BUTTON_DP + 10));
         list.post(() -> {
             if (first[0] != null) first[0].requestFocus();
         });

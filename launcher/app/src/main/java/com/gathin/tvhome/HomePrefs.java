@@ -84,9 +84,9 @@ final class HomePrefs {
     }
 
     // ---- aplikasi di Beranda Shaff ----
-    /** Jumlah aplikasi yang tampil sekaligus di layar (4 sampai 8). */
+    /** Jumlah aplikasi yang tampil sekaligus di layar (4 sampai 10). */
     static int visibleApps(Context c) {
-        return Math.max(3, Math.min(8, prefs(c).getInt("app_count", 6)));
+        return Math.max(3, Math.min(10, prefs(c).getInt("app_count", 6)));
     }
 
     static void setVisibleApps(Context c, int n) {

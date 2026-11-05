@@ -13,7 +13,8 @@ final class HomeBackdrop {
     private HomeBackdrop() {}
 
     static Drawable create(Context c) {
-        Drawable wall = c.getDrawable(R.drawable.shaff_wallpaper);
+        Drawable wall = WallpaperStore.loadCustom(c); // pilihan pengguna, bila ada
+        if (wall == null) wall = c.getDrawable(R.drawable.shaff_wallpaper);
         GradientDrawable scrim = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{a(0.62f), a(0.42f), a(0.52f)});
         return new LayerDrawable(new Drawable[]{wall, scrim});

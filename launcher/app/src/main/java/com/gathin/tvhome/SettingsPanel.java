@@ -136,7 +136,7 @@ final class SettingsPanel extends ScrollView {
     private void addAppsSection(LinearLayout col) {
         col.addView(label("Jumlah aplikasi yang tampil per layar", 17, true, 24));
         col.addView(label("Bila aplikasi lebih banyak dari angka ini, daftar berputar saat digeser.", 13, false, 4));
-        final int[] counts = {4, 5, 6, 7, 8};
+        final int[] counts = {4, 5, 6, 7, 8, 9, 10};
         final Button[] cb = new Button[counts.length];
         LinearLayout row = new LinearLayout(ctx);
         row.setOrientation(LinearLayout.HORIZONTAL);
