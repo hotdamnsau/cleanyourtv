@@ -53,7 +53,9 @@ public class ShaffHomeActivity extends Activity {
     private static final String GREETING_NAMES = "Shaff dan Syaz";
     private static final float CLOCK_SP = 56f;
     /** Ukuran salam = 50% ukuran jam. */
-    private static final float GREETING_SP = 28f;
+    /** Salam 1 baris: ukuran maksimum dan minimum. Otomatis mengecil agar tidak melewati tengah layar. */
+    private static final float GREETING_MAX_SP = 24f;
+    private static final float GREETING_MIN_SP = 14f;
     private static final int SIDE_MARGIN_DP = 32;    // margin kiri jam, tanggal, dan baris aplikasi
     private static final int RIGHT_GUTTER_DP = 92;   // ruang kanan untuk tombol bulat
     private static final int BOTTOM_MARGIN_DP = 28;
@@ -80,6 +82,7 @@ public class ShaffHomeActivity extends Activity {
     private float d;
     private FrameLayout root;
     private TextView greeting, clock, date;
+    private int topColWidthPx;
     private LinearLayout tileRow;
     private Tile[] tiles = new Tile[0];
     private ImageView[] buttons = new ImageView[3];
@@ -148,17 +151,10 @@ public class ShaffHomeActivity extends Activity {
 
     // ---------------- atas: salam, jam, tanggal (kiri) dan sholat (kanan) ----------------
     private void buildTop() {
+        topColWidthPx = getResources().getDisplayMetrics().widthPixels / 2 - dp(SIDE_MARGIN_DP);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.START);
-
-        greeting = new TextView(this);
-        greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, GREETING_SP);
-        greeting.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-        greeting.setTextColor(Color.WHITE);
-        greeting.setGravity(Gravity.START);
-        greeting.setShadowLayer(8f, 0f, 3f, 0xAA000000);
-        col.addView(greeting);
 
         clock = new TextView(this);
         clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, CLOCK_SP);
@@ -166,19 +162,31 @@ public class ShaffHomeActivity extends Activity {
         clock.setTextColor(Color.WHITE);
         clock.setShadowLayer(8f, 0f, 3f, 0xAA000000);
         clock.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams kp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        kp.topMargin = dp(8);
-        col.addView(clock, kp);
+        col.addView(clock);
 
         date = new TextView(this);
-        date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-        date.setLetterSpacing(0.15f);
-        date.setTextColor(0xE6FFFFFF);
+        date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        date.setTextColor(0xF2FFFFFF);
         date.setShadowLayer(6f, 0f, 2f, 0xAA000000);
-        col.addView(date);
+        date.setSingleLine(true);
+        LinearLayout.LayoutParams dp1 = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        dp1.topMargin = dp(2);
+        col.addView(date, dp1);
 
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+        greeting = new TextView(this);
+        greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, GREETING_MAX_SP);
+        greeting.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        greeting.setTextColor(Color.WHITE);
+        greeting.setGravity(Gravity.START);
+        greeting.setShadowLayer(8f, 0f, 3f, 0xAA000000);
+        greeting.setSingleLine(true);
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        gp.topMargin = dp(10);
+        col.addView(greeting, gp);
+
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(topColWidthPx,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
         cp.topMargin = dp(18);
         cp.leftMargin = dp(SIDE_MARGIN_DP);
@@ -190,6 +198,17 @@ public class ShaffHomeActivity extends Activity {
         pp.rightMargin = dp(40);
         prayer = new PrayerBar(this, true);
         root.addView(prayer, pp);
+    }
+
+    /** Memasang teks salam 1 baris dan mengecilkan fontnya sampai muat dalam setengah layar. */
+    private void setGreeting(String text) {
+        float sp = GREETING_MAX_SP;
+        greeting.setText(text);
+        while (true) {
+            greeting.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+            if (sp <= GREETING_MIN_SP || greeting.getPaint().measureText(text) <= topColWidthPx) break;
+            sp -= 1f;
+        }
     }
 
     private void updateTexts() {
@@ -206,10 +225,10 @@ public class ShaffHomeActivity extends Activity {
         t.setTimeZone(tz);
         clock.setText(t.format(cal.getTime()));
         Locale id = new Locale("id", "ID");
-        SimpleDateFormat df = new SimpleDateFormat("EEEE d MMMM", id);
+        SimpleDateFormat df = new SimpleDateFormat("EEEE, d MMMM", id); // contoh: Kamis, 5 November
         df.setTimeZone(tz);
-        date.setText(df.format(cal.getTime()).toUpperCase(id));
-        greeting.setText(g + "\n" + GREETING_NAMES); // baris 1: salam, baris 2: nama
+        date.setText(df.format(cal.getTime()));
+        setGreeting(g + ", " + GREETING_NAMES); // 1 baris: salam diikuti nama
     }
 
     // ---------------- bawah: aplikasi + pita pertandingan ----------------
@@ -522,7 +541,7 @@ public class ShaffHomeActivity extends Activity {
             // TV tidak mengizinkan membaca daftar input
         }
         if (inputs.isEmpty()) {
-            Toast.makeText(this, "Input tidak ditemukan. Pakai Beranda klasik (tombol Atur).", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Input tidak ditemukan di TV ini.", Toast.LENGTH_LONG).show();
             return;
         }
         String[] names = new String[inputs.size()];
@@ -546,19 +565,12 @@ public class ShaffHomeActivity extends Activity {
 
     private void showAturMenu() {
         showMenu(new String[]{"Lokasi (sholat dan cuaca)", "Liga sepak bola", "Aplikasi dan jumlah tampil",
-                        "Setelan sistem", "Beranda klasik"},
+                        "Setelan sistem"},
                 new Runnable[]{
                         () -> openSettings("location"),
                         () -> openSettings("leagues"),
                         () -> openSettings("apps"),
-                        this::openSystemSettings,
-                        () -> {
-                            try {
-                                startActivity(new Intent(this, MainActivity.class));
-                            } catch (RuntimeException e) {
-                                Toast.makeText(this, "Beranda klasik tidak bisa dibuka", Toast.LENGTH_SHORT).show();
-                            }
-                        }
+                        this::openSystemSettings
                 });
     }
 
