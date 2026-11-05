@@ -81,6 +81,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:enabled="false"
             android:exported="true"
             android:launchMode="singleTask"
             android:stateNotNeeded="true"
@@ -250,22 +251,27 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/input_key_service" />
         </service>
-    <activity
+  <activity
     android:name=".ShaffHomeActivity"
     android:exported="true"
     android:label="Beranda Shaff"
     android:launchMode="singleTask"
+    android:stateNotNeeded="true"
+    android:excludeFromRecents="true"
+    android:clearTaskOnLaunch="true"
+    android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode"
+    android:screenOrientation="landscape"
     android:theme="@android:style/Theme.Material.NoActionBar">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.HOME" />
+        <category android:name="android.intent.category.DEFAULT" />
+    </intent-filter>
     <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
         <category android:name="android.intent.category.LAUNCHER" />
     </intent-filter>
-        <intent-filter>
-    <action android:name="android.intent.action.MAIN" />
-    <category android:name="android.intent.category.HOME" />
-    <category android:name="android.intent.category.DEFAULT" />
-</intent-filter>
 </activity>
     </application>
 </manifest>
