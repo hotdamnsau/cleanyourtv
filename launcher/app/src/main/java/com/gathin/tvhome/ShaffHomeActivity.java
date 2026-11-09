@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Outline;
@@ -17,6 +18,7 @@ import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -87,6 +89,7 @@ public class ShaffHomeActivity extends Activity {
     private Tile[] tiles = new Tile[0];
     private ImageView aturButton;
     private static final int REQ_WALLPAPER = 4711;
+    private static final int REQ_STORAGE = 4712;
     private int start = 0, sel = 0;
     private int slidePx;
     private WeatherOverlayView weather;
@@ -565,8 +568,10 @@ public class ShaffHomeActivity extends Activity {
 
     // ---------------- wallpaper dari flashdisk atau penyimpanan internal ----------------
     private void showWallpaperMenu() {
-        showMenu(new String[]{"Pilih gambar (flashdisk atau penyimpanan)", "Kembalikan wallpaper bawaan"},
+        showMenu(new String[]{"Pilih gambar dari flashdisk atau penyimpanan", "Pilih lewat aplikasi file sistem",
+                        "Kembalikan wallpaper bawaan"},
                 new Runnable[]{
+                        this::openWallpaperPicker,
                         this::pickWallpaper,
                         () -> {
                             if (WallpaperStore.hasCustom(this)) {
@@ -578,6 +583,48 @@ public class ShaffHomeActivity extends Activity {
                             }
                         }
                 });
+    }
+
+    private String storagePermission() {
+        return Build.VERSION.SDK_INT >= 33 ? "android.permission.READ_MEDIA_IMAGES"
+                : android.Manifest.permission.READ_EXTERNAL_STORAGE;
+    }
+
+    private boolean hasStoragePermission() {
+        return Build.VERSION.SDK_INT < 23
+                || checkSelfPermission(storagePermission()) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Pemilih gambar buatan sendiri (tidak memakai aplikasi file TV). */
+    private void openWallpaperPicker() {
+        if (!hasStoragePermission()) {
+            requestPermissions(new String[]{storagePermission()}, REQ_STORAGE);
+            return;
+        }
+        final Dialog dlg = new Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen);
+        final WallpaperPicker picker = new WallpaperPicker(this, dlg, file -> importWallpaperAsync(Uri.fromFile(file)));
+        dlg.setContentView(picker);
+        dlg.setOnKeyListener((di, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) picker.back();
+                return true;
+            }
+            return false;
+        });
+        dlg.setOnDismissListener(x -> root.post(this::focusSelected));
+        dlg.show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_STORAGE) return;
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            openWallpaperPicker();
+        } else {
+            Toast.makeText(this, "Izin penyimpanan ditolak. Beri izin lewat Termux: adb shell pm grant "
+                    + getPackageName() + " " + storagePermission(), Toast.LENGTH_LONG).show();
+        }
     }
 
     /** Membuka pemilih berkas sistem (mendukung flashdisk USB dan penyimpanan internal). */
@@ -602,7 +649,10 @@ public class ShaffHomeActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQ_WALLPAPER || resultCode != RESULT_OK || data == null || data.getData() == null) return;
-        final Uri uri = data.getData();
+        importWallpaperAsync(data.getData());
+    }
+
+    private void importWallpaperAsync(final Uri uri) {
         Toast.makeText(this, "Memproses wallpaper...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             String error = null;
